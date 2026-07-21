@@ -12,7 +12,8 @@ internal sealed class NetBoxClient : IDisposable
     public NetBoxClient(AgentConfig config)
     {
         var handler = new HttpClientHandler();
-        if (!config.VerifyTls) handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+        if (config.AllowInsecureTls || !config.VerifyTls)
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         _http = new HttpClient(handler) { BaseAddress = new Uri(config.NetBoxUrl.TrimEnd('/') + "/"), Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds) };
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", config.ApiToken);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

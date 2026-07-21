@@ -14,7 +14,7 @@ static async Task<int> MainAsync(string[] args)
         var config = JsonSerializer.Deserialize<AgentConfig>(await File.ReadAllTextAsync(configPath), new JsonSerializerOptions(JsonSerializerDefaults.Web))
             ?? throw new InvalidOperationException("Konfiguration ist leer.");
         Validate(config);
-        var hardware = HardwareCollector.Collect();
+        var hardware = HardwareCollector.Collect(config.CollectSoftware, config.MaxSoftwareEntries);
         Console.WriteLine($"Erfasst: {hardware.Hostname}, {hardware.Manufacturer} {hardware.Model}, S/N {hardware.Serial}");
         using var client = new NetBoxClient(config);
         var result = await new SyncService(client, config).Sync(hardware, dryRun);
@@ -36,5 +36,6 @@ static void Validate(AgentConfig c)
     if (!Uri.TryCreate(c.NetBoxUrl, UriKind.Absolute, out var uri) || (uri.Scheme != "https" && uri.Scheme != "http")) throw new InvalidOperationException("netbox_url ist ungültig.");
     if (string.IsNullOrWhiteSpace(c.ApiToken) || c.ApiToken == "CHANGE_ME") throw new InvalidOperationException("api_token fehlt.");
     if (string.IsNullOrWhiteSpace(c.DeviceRole)) throw new InvalidOperationException("device_role fehlt.");
+    if (c.MaxSoftwareEntries < 0 || c.MaxSoftwareEntries > 1000) throw new InvalidOperationException("max_software_entries muss zwischen 0 und 1000 liegen.");
 }
 static void Usage() => Console.WriteLine("agent.exe [--config PFAD] [--dry-run] [--help]");

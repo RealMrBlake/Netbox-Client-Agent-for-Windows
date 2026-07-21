@@ -13,11 +13,12 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
 
         var device = await client.FindOne("dcim/devices", ("serial", hw.Serial));
         var customFields = BuildCustomFields(hw);
+        var inventoryReport = HardwareSummary(hw);
         var devicePayload = new Dictionary<string, object?> {
             ["name"] = hw.Hostname, ["device_type"] = deviceType.Id, ["role"] = role.Id,
             ["site"] = site?.Id, ["location"] = location?.Id, ["status"] = "active",
             ["serial"] = hw.Serial, ["description"] = $"{hw.WindowsCaption} ({hw.Architecture})",
-            ["comments"] = HardwareSummary(hw), ["custom_fields"] = customFields
+            ["comments"] = inventoryReport, ["custom_fields"] = customFields
         };
         RemoveNulls(devicePayload);
         if (device is null) {
@@ -29,7 +30,7 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
         var assetPayload = new Dictionary<string, object?> {
             ["name"] = hw.Hostname, ["serial"] = hw.Serial, ["status"] = "used",
             ["device_type"] = deviceType.Id, ["device"] = device.Id,
-            ["description"] = $"Windows-Client; UUID {hw.Uuid}"
+            ["description"] = $"Windows-Client; UUID {hw.Uuid}", ["comments"] = inventoryReport
         };
         if (asset is null) {
             if (dryRun) return (device.Id, 0);
@@ -76,10 +77,24 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
         };
         return config.CustomFields.Where(x => available.ContainsKey(x.Key)).ToDictionary(x => x.Value, x => available[x.Key]);
     }
-    private static string HardwareSummary(HardwareInfo hw) =>
-        $"Automatisch durch NetBox Windows Agent aktualisiert.\n\nCPU: {hw.Processor}\nRAM: {hw.MemoryBytes / 1073741824d:F1} GiB\n" +
-        $"Datenträger: {string.Join(", ", hw.Disks.Select(d => $"{d.Model} ({d.SizeBytes / 1000000000d:F0} GB)"))}\n" +
-        $"Netzwerk: {string.Join(", ", hw.Networks.Select(n => $"{n.Name} [{n.MacAddress}]"))}";
+    private static string HardwareSummary(HardwareInfo hw)
+    {
+        var lines = new List<string> {
+            "Automatisch durch NetBox Windows Agent aktualisiert.", "", "## Hardware",
+            $"- System: {hw.Manufacturer} {hw.Model}", $"- Seriennummer: {hw.Serial}", $"- UUID: {hw.Uuid}",
+            $"- Betriebssystem: {hw.WindowsCaption} {hw.WindowsVersion} ({hw.Architecture})",
+            $"- CPU: {hw.Processor}", $"- RAM: {hw.MemoryBytes / 1073741824d:F1} GiB", "", "### Datenträger"
+        };
+        lines.AddRange(hw.Disks.Select(d => $"- {d.Model} — {d.SizeBytes / 1000000000d:F0} GB — S/N {d.Serial} — {d.DeviceId}"));
+        lines.AddRange(["", "### Netzwerk"]);
+        lines.AddRange(hw.Networks.Select(n => $"- {n.Name} — {n.MacAddress} — {string.Join(", ", n.IpAddresses)}"));
+        if (hw.Software.Count > 0)
+        {
+            lines.AddRange(["", $"## Installierte Software ({hw.Software.Count})"]);
+            lines.AddRange(hw.Software.Select(s => $"- {s.Name}{(string.IsNullOrWhiteSpace(s.Version) ? "" : $" {s.Version}")}{(string.IsNullOrWhiteSpace(s.Publisher) ? "" : $" — {s.Publisher}")}"));
+        }
+        return string.Join('\n', lines);
+    }
     private static string Slug(string value) => string.Concat(value.Trim().ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '-')).Trim('-');
     private static void RemoveNulls(Dictionary<string, object?> data) { foreach (var key in data.Where(x => x.Value is null).Select(x => x.Key).ToList()) data.Remove(key); }
 }

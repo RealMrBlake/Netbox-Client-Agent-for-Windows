@@ -6,7 +6,10 @@
   "location": "office-1",
   "device_role": "windows-client",
   "verify_tls": true,
+  "allow_insecure_tls": false,
   "timeout_seconds": 30,
+  "collect_software": true,
+  "max_software_entries": 250,
   "tags": ["windows-agent"],
   "custom_fields": {
     "agent_version": "netbox_agent_version",

@@ -11,7 +11,10 @@ internal sealed class AgentConfig
     [JsonPropertyName("location")] public string? Location { get; set; }
     [JsonPropertyName("device_role")] public string DeviceRole { get; set; } = "windows-client";
     [JsonPropertyName("verify_tls")] public bool VerifyTls { get; set; } = true;
+    [JsonPropertyName("allow_insecure_tls")] public bool AllowInsecureTls { get; set; } = false;
     [JsonPropertyName("timeout_seconds")] public int TimeoutSeconds { get; set; } = 30;
+    [JsonPropertyName("collect_software")] public bool CollectSoftware { get; set; } = true;
+    [JsonPropertyName("max_software_entries")] public int MaxSoftwareEntries { get; set; } = 250;
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("custom_fields")] public Dictionary<string, string> CustomFields { get; set; } = new();
 }
@@ -19,9 +22,11 @@ internal sealed class AgentConfig
 internal sealed record HardwareInfo(
     string Hostname, string Manufacturer, string Model, string Serial, string Uuid,
     string WindowsCaption, string WindowsVersion, string Architecture, string Processor,
-    ulong MemoryBytes, IReadOnlyList<DiskInfo> Disks, IReadOnlyList<NetworkInfo> Networks);
+    ulong MemoryBytes, IReadOnlyList<DiskInfo> Disks, IReadOnlyList<NetworkInfo> Networks,
+    IReadOnlyList<SoftwareInfo> Software);
 internal sealed record DiskInfo(string DeviceId, string Model, string Serial, ulong SizeBytes);
 internal sealed record NetworkInfo(string Name, string MacAddress, IReadOnlyList<string> IpAddresses);
+internal sealed record SoftwareInfo(string Name, string Version, string Publisher);
 
 internal sealed class Page<T>
 {
@@ -35,4 +40,3 @@ internal sealed class NetBoxObject
     [JsonPropertyName("slug")] public string? Slug { get; set; }
     [JsonPropertyName("serial")] public string? Serial { get; set; }
 }
-

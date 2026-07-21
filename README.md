@@ -5,7 +5,8 @@ Ein schlanker Windows-Agent, der Hardwaredaten per WMI erfasst und einen NetBox-
 ## Was synchronisiert wird
 
 - Rechnername, Hersteller, Modell, BIOS-Seriennummer und Geräte-UUID
-- Windows-Version und Architektur, CPU, RAM, Datenträger, MAC- und IP-Adressen
+- Windows-Version und Architektur, CPU, RAM, Datenträger inklusive Seriennummern, MAC- und IP-Adressen
+- Maschinenweit installierte Software aus der 32- und 64-Bit-Windows-Registry
 - NetBox Site und Location aus der Konfiguration
 - `dcim.Device` sowie das verknüpfte `netbox_inventory.Asset`
 - Hersteller und Device Type werden bei Bedarf angelegt
@@ -35,13 +36,18 @@ Optionale Custom Fields müssen für `dcim.Device` existieren. Die linke Seite i
   "location": "office-1",
   "device_role": "windows-client",
   "verify_tls": true,
+  "allow_insecure_tls": false,
   "timeout_seconds": 30,
+  "collect_software": true,
+  "max_software_entries": 250,
   "tags": [],
   "custom_fields": {}
 }
 ```
 
-`site` und `location` sind optional. `verify_tls: false` ist nur für kurzfristige Tests mit selbstsignierten Zertifikaten gedacht. `config.json` ist wegen des Tokens in `.gitignore` enthalten.
+`site` und `location` sind optional. Für NetBox-Installationen mit selbstsigniertem Zertifikat kann `allow_insecure_tls` auf `true` gesetzt werden. Damit werden sowohl Fehler der Zertifikatskette als auch abweichende Zertifikatsnamen ignoriert; dies reduziert die Sicherheit und sollte nur in vertrauenswürdigen internen Netzen verwendet werden. `verify_tls: false` bleibt aus Kompatibilitätsgründen ebenfalls unterstützt.
+
+`collect_software` aktiviert die Softwareinventarisierung. `max_software_entries` begrenzt die Anzahl der alphabetisch sortierten Einträge zwischen 0 und 1000. Erfasst wird maschinenweit installierte klassische Windows-Software; benutzerspezifische Store-/AppX-Pakete sind im SYSTEM-Kontext nicht zuverlässig verfügbar.
 
 ## Ausführen und bauen
 
