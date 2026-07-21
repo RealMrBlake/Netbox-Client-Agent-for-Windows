@@ -21,7 +21,14 @@ static async Task<int> MainAsync(string[] args)
         Console.WriteLine(dryRun ? "Dry-Run erfolgreich; keine Änderungen geschrieben." : $"Synchronisiert: Device #{result.DeviceId}, Asset #{result.AssetId}");
         return 0;
     }
-    catch (Exception ex) { Console.Error.WriteLine($"FEHLER: {ex.Message}"); return 1; }
+    catch (Exception ex)
+    {
+        var messages = new List<string>();
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+            if (!messages.Contains(current.Message)) messages.Add(current.Message);
+        Console.Error.WriteLine($"FEHLER: {string.Join(" -> ", messages)}");
+        return 1;
+    }
 }
 static string? ValueAfter(string[] args, string key) { var i = Array.IndexOf(args, key); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
 static void Validate(AgentConfig c)

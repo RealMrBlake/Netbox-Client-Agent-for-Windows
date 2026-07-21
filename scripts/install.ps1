@@ -17,6 +17,12 @@ $systemSid = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
 $admins = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsSid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
 $system = New-Object System.Security.AccessControl.FileSystemAccessRule($systemSid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
 $acl.SetAccessRule($admins); $acl.SetAccessRule($system); Set-Acl $InstallDirectory $acl
-$command = '"' + (Join-Path $InstallDirectory 'agent.exe') + '" --config "' + (Join-Path $InstallDirectory 'config.json') + '"'
-schtasks.exe /Create /TN 'NetBox Windows Agent' /SC $Schedule /ST $StartTime /RU SYSTEM /RL HIGHEST /TR $command /F | Out-Null
+$agentPath = Join-Path $InstallDirectory 'agent.exe'
+$configPath = Join-Path $InstallDirectory 'config.json'
+if ($Schedule -ne 'DAILY') { throw "Derzeit wird nur Schedule 'DAILY' unterstützt." }
+$action = New-ScheduledTaskAction -Execute $agentPath -Argument "--config `"$configPath`""
+$trigger = New-ScheduledTaskTrigger -Daily -At $StartTime
+$principal = New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
+Register-ScheduledTask -TaskName 'NetBox Windows Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 & (Join-Path $InstallDirectory 'agent.exe') --config (Join-Path $InstallDirectory 'config.json')
