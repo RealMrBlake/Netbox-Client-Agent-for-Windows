@@ -21,7 +21,7 @@ Der Agent löscht keine NetBox-Objekte. Site, Location und Device Role müssen b
 3. Site/Location existieren, falls sie in `config.json` gesetzt sind.
 4. Der API-Token darf Devices, Manufacturers, Device Types und Inventory Assets lesen, anlegen und ändern.
 
-Optionale Custom Fields müssen für `dcim.Device` existieren. Die linke Seite in `custom_fields` ist der Agent-Schlüssel, die rechte Seite der NetBox-Custom-Field-Name. Nicht benötigte Einträge können entfernt werden.
+Optionale Custom Fields müssen für `dcim.Device` existieren. Standardmäßig werden keine Custom Fields gesendet. Die linke Seite in `custom_fields` ist der Agent-Schlüssel, die rechte Seite der NetBox-Custom-Field-Name. Unterstützte Agent-Schlüssel sind `agent_version`, `windows_version`, `device_uuid` und `last_sync`.
 
 ## Konfiguration
 
