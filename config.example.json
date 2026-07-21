@@ -1,0 +1,17 @@
+{
+  "netbox_url": "https://netbox.example.com",
+  "api_token": "CHANGE_ME",
+  "region": "emea",
+  "site": "berlin",
+  "location": "office-1",
+  "device_role": "windows-client",
+  "verify_tls": true,
+  "timeout_seconds": 30,
+  "tags": ["windows-agent"],
+  "custom_fields": {
+    "agent_version": "netbox_agent_version",
+    "windows_version": "windows_version",
+    "device_uuid": "device_uuid",
+    "last_sync": "agent_last_sync"
+  }
+}

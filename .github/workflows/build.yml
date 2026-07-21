@@ -1,0 +1,28 @@
+name: Build Windows agent
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        runtime: [win-x64, win-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - shell: pwsh
+        run: ./scripts/build.ps1 -Runtime ${{ matrix.runtime }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-${{ matrix.runtime }}
+          path: |
+            dist/${{ matrix.runtime }}/agent.exe
+            config.example.json
+            scripts/install.ps1
+            scripts/uninstall.ps1
+
