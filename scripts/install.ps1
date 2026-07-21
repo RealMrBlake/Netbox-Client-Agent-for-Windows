@@ -25,4 +25,7 @@ $trigger = New-ScheduledTaskTrigger -Daily -At $StartTime
 $principal = New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
 Register-ScheduledTask -TaskName 'NetBox Windows Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-& (Join-Path $InstallDirectory 'agent.exe') --config (Join-Path $InstallDirectory 'config.json')
+& $agentPath --config $configPath
+if ($LASTEXITCODE -ne 0) { throw "Die erste NetBox-Synchronisation ist mit Exitcode $LASTEXITCODE fehlgeschlagen." }
+Write-Host 'NetBox Windows Agent wurde erfolgreich installiert und synchronisiert.'
+exit 0

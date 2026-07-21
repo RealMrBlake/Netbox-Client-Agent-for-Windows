@@ -36,6 +36,7 @@ static void Validate(AgentConfig c)
     if (!Uri.TryCreate(c.NetBoxUrl, UriKind.Absolute, out var uri) || (uri.Scheme != "https" && uri.Scheme != "http")) throw new InvalidOperationException("netbox_url ist ungültig.");
     if (string.IsNullOrWhiteSpace(c.ApiToken) || c.ApiToken == "CHANGE_ME") throw new InvalidOperationException("api_token fehlt.");
     if (string.IsNullOrWhiteSpace(c.DeviceRole)) throw new InvalidOperationException("device_role fehlt.");
+    if (string.IsNullOrWhiteSpace(c.Site)) throw new InvalidOperationException("site fehlt. NetBox verlangt für jedes DCIM Device eine Site; nur location ist optional.");
     if (c.MaxSoftwareEntries < 0 || c.MaxSoftwareEntries > 1000) throw new InvalidOperationException("max_software_entries muss zwischen 0 und 1000 liegen.");
 }
 static void Usage() => Console.WriteLine("agent.exe [--config PFAD] [--dry-run] [--help]");

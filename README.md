@@ -30,7 +30,7 @@ Erforderlich:
    - DCIM Module Types, Module Bays und Modules
    - Inventory Assets des Plugins
 
-Site, Location und Device Role legt der Agent absichtlich nicht automatisch an. Hersteller, Device Types und erkannte Hardwaretypen dagegen schon.
+Site und Device Role legt der Agent absichtlich nicht automatisch an. Eine Site ist für jedes NetBox Device zwingend erforderlich. Location ist optional. Hersteller, Device Types und erkannte Hardwaretypen legt der Agent bei Bedarf an.
 
 ## 2. Repository herunterladen und EXE bauen
 
@@ -79,7 +79,7 @@ Minimalbeispiel zum Kopieren:
 }
 ```
 
-`site` und `location` dürfen vollständig entfernt oder auf `null` gesetzt werden. `region` grenzt die Suche nach der Site ein.
+`site` muss den Slug einer vorhandenen NetBox Site enthalten, da NetBox für jedes DCIM Device eine Site verlangt. `location` ist optional und darf entfernt oder auf `null` gesetzt werden. `region` grenzt die Suche nach der Site ein.
 
 ### Selbstsigniertes Zertifikat
 
@@ -191,8 +191,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 Installationsverhalten:
 System
 
-Erkennungsregel:
-Datei C:\Program Files\NetBox Windows Agent\agent.exe vorhanden
+Erkennungsregel (Regeltyp „Datei“):
+Pfad: C:\Program Files\NetBox Windows Agent
+Datei oder Ordner: agent.exe
+Erkennungsmethode: Datei oder Ordner ist vorhanden
+Auf 64-Bit-Clients einer 32-Bit-App zugeordnet: Nein
 ```
 
 ## Fehlerbehebung
@@ -220,6 +223,24 @@ Wenn keine eigenen NetBox Custom Fields angelegt wurden:
 ### `403 Forbidden`
 
 Dem Benutzer des API-Tokens fehlen Rechte für den im Fehler genannten Objekttyp.
+
+### `site: Dieses Feld ist erforderlich`
+
+NetBox verlangt für jedes DCIM Device eine Site. In `config.json` den Slug einer vorhandenen Site eintragen:
+
+```json
+"site": "berlin",
+"location": null
+```
+
+### Intune meldet Installation fehlgeschlagen, die Dateien sind aber vorhanden
+
+Bei einer Datei-Erkennungsregel darf im Feld `Pfad` nur der Ordner stehen. `agent.exe` gehört ausschließlich in das separate Feld `Datei oder Ordner`:
+
+```text
+Pfad: C:\Program Files\NetBox Windows Agent
+Datei oder Ordner: agent.exe
+```
 
 ### `400 Bad Request`
 
