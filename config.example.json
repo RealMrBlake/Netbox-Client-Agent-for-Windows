@@ -10,6 +10,7 @@
   "timeout_seconds": 30,
   "collect_software": true,
   "max_software_entries": 250,
-  "tags": ["windows-agent"],
+  "create_hardware_modules": true,
+  "create_interfaces": true,
   "custom_fields": {}
 }

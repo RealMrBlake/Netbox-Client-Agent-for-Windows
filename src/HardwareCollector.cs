@@ -19,11 +19,15 @@ internal static class HardwareCollector
             .Where(x => x["MACAddress"] is not null)
             .Select(x => new NetworkInfo(S(x, "Description"), S(x, "MACAddress"),
                 (x["IPAddress"] as string[] ?? []).Where(ip => !ip.StartsWith("169.254.")).ToList())).ToList();
+        var memoryModules = Query("Win32_PhysicalMemory", "BankLabel", "DeviceLocator", "Manufacturer", "PartNumber", "SerialNumber", "Capacity")
+            .Select(x => new MemoryInfo(
+                string.IsNullOrWhiteSpace(S(x, "BankLabel")) ? S(x, "DeviceLocator") : S(x, "BankLabel"),
+                S(x, "Manufacturer"), S(x, "PartNumber"), S(x, "SerialNumber"), U(x, "Capacity"))).ToList();
 
         return new HardwareInfo(Environment.MachineName, S(computer, "Manufacturer"), S(computer, "Model"),
             S(bios, "SerialNumber"), S(product, "UUID"), S(os, "Caption"), S(os, "Version"),
             S(os, "OSArchitecture"), S(cpu, "Name"), U(computer, "TotalPhysicalMemory"), disks, networks,
-            collectSoftware ? CollectSoftware(maxSoftwareEntries) : []);
+            memoryModules, collectSoftware ? CollectSoftware(maxSoftwareEntries) : []);
     }
 
     private static IReadOnlyList<SoftwareInfo> CollectSoftware(int maximum)

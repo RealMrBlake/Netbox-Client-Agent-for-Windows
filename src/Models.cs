@@ -15,6 +15,8 @@ internal sealed class AgentConfig
     [JsonPropertyName("timeout_seconds")] public int TimeoutSeconds { get; set; } = 30;
     [JsonPropertyName("collect_software")] public bool CollectSoftware { get; set; } = true;
     [JsonPropertyName("max_software_entries")] public int MaxSoftwareEntries { get; set; } = 250;
+    [JsonPropertyName("create_hardware_modules")] public bool CreateHardwareModules { get; set; } = true;
+    [JsonPropertyName("create_interfaces")] public bool CreateInterfaces { get; set; } = true;
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("custom_fields")] public Dictionary<string, string> CustomFields { get; set; } = new();
 }
@@ -23,9 +25,10 @@ internal sealed record HardwareInfo(
     string Hostname, string Manufacturer, string Model, string Serial, string Uuid,
     string WindowsCaption, string WindowsVersion, string Architecture, string Processor,
     ulong MemoryBytes, IReadOnlyList<DiskInfo> Disks, IReadOnlyList<NetworkInfo> Networks,
-    IReadOnlyList<SoftwareInfo> Software);
+    IReadOnlyList<MemoryInfo> MemoryModules, IReadOnlyList<SoftwareInfo> Software);
 internal sealed record DiskInfo(string DeviceId, string Model, string Serial, ulong SizeBytes);
 internal sealed record NetworkInfo(string Name, string MacAddress, IReadOnlyList<string> IpAddresses);
+internal sealed record MemoryInfo(string Bank, string Manufacturer, string PartNumber, string Serial, ulong CapacityBytes);
 internal sealed record SoftwareInfo(string Name, string Version, string Publisher);
 
 internal sealed class Page<T>
