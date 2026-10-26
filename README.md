@@ -1,40 +1,58 @@
-# NetBox Client Agent für Windows
+# NetBox Client Agent for Windows
 
-Der Agent inventarisiert einen Windows-PC automatisch in NetBox und im Plugin [ArnesSI/netbox-inventory](https://github.com/ArnesSI/netbox-inventory). Das Ergebnis ist eine einzelne, selbstenthaltende `agent.exe`; auf dem Client muss kein .NET installiert sein.
+Inventories a Windows PC automatically in NetBox and in the
+[netbox-inventory](https://github.com/ArnesSI/netbox-inventory) plugin. The
+result is a single, self-contained `agent.exe`; the client does not need .NET
+installed.
 
-## Ergebnis in NetBox
+| | |
+|---|---|
+| **Type** | Command-line agent (.NET 8) |
+| **Platform** | Windows (x64, ARM64) |
+| **NetBox** | `4.2` or newer recommended |
+| **Repository** | <https://git.mrblake.cc/MrBlake/Netbox-Client-Agent-for-Windows> |
 
-Nach dem ersten Lauf entstehen beziehungsweise aktualisieren sich:
+## Features
 
-- ein `DCIM > Device` für den Windows-PC,
-- ein damit verknüpftes Inventory-Asset,
-- Interfaces für erkannte Netzwerkadapter,
-- je Interface eine zugewiesene primäre MAC-Adresse,
-- Module und Module Bays für CPU, RAM-Riegel und Datenträger,
-- ein Hardware- und Softwarebericht in den Kommentaren von Device und Asset.
+After the first run, the agent creates or updates:
 
-Der Agent erkennt den PC anhand seiner BIOS-Seriennummer wieder. Wiederholte Ausführungen aktualisieren deshalb die vorhandenen Objekte. Es werden keine NetBox-Objekte gelöscht.
+- a `DCIM > Device` for the Windows PC,
+- a linked inventory asset,
+- interfaces for detected network adapters,
+- an assigned primary MAC address per interface,
+- modules and module bays for CPU, memory modules and disks,
+- a hardware and software report in the comments of the device and asset.
 
-> NetBox 4.2 oder neuer wird empfohlen, da MAC-Adressen seit 4.2 eigenständige Objekte sind. Module sind in NetBox eigentlich für austauschbare Hardwarekomponenten vorgesehen; für PC-Inventarisierung werden CPU, RAM und Datenträger bewusst auf dieses Modell abgebildet.
+The agent recognises the PC by its BIOS serial number, so repeated runs update
+the existing objects. No NetBox objects are ever deleted.
 
-## 1. NetBox vorbereiten
+> NetBox 4.2 or newer is recommended, since MAC addresses are separate objects
+> from 4.2 on. Modules are meant for replaceable hardware in NetBox; for PC
+> inventory, CPU, memory and disks are deliberately mapped onto this model.
 
-Erforderlich:
+## Requirements
 
-1. `netbox-inventory` ist installiert.
-2. Eine Device Role mit dem Slug `windows-client` existiert.
-3. Die in der Konfiguration genannten Site und Location existieren, sofern sie verwendet werden.
-4. Der API-Token besitzt Lese-, Erstell- und Änderungsrechte für:
-   - DCIM Devices, Manufacturers und Device Types
-   - DCIM Interfaces und MAC Addresses
-   - DCIM Module Types, Module Bays und Modules
-   - Inventory Assets des Plugins
+1. `netbox-inventory` is installed.
+2. A device role with the slug `windows-client` exists.
+3. The site and location named in the configuration exist, if used.
+4. The API token has read, create and change permissions for:
+   - DCIM devices, manufacturers and device types
+   - DCIM interfaces and MAC addresses
+   - DCIM module types, module bays and modules
+   - the plugin's inventory assets
 
-Site und Device Role legt der Agent absichtlich nicht automatisch an. Eine Site ist für jedes NetBox Device zwingend erforderlich. Location ist optional. Hersteller, Device Types und erkannte Hardwaretypen legt der Agent bei Bedarf an.
+The agent deliberately does not create sites or device roles. NetBox requires a
+site for every device; a location is optional. Manufacturers, device types and
+detected hardware types are created as needed.
 
-## 2. Repository herunterladen und EXE bauen
+Building requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+or newer.
 
-PowerShell öffnen und ausführen:
+## Installation
+
+### 1. Build the executable
+
+In PowerShell:
 
 ```powershell
 git clone https://git.mrblake.cc/MrBlake/Netbox-Client-Agent-for-Windows.git
@@ -45,25 +63,83 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -Runtime win-x64
 ```
 
-Zum Bauen wird das [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) oder neuer benötigt. Die fertige Datei liegt anschließend hier:
+The result is `dist\win-x64\agent.exe`.
 
-```text
-dist\win-x64\agent.exe
-```
-
-## 3. Konfiguration erstellen
+### 2. Create the configuration
 
 ```powershell
 Copy-Item .\config.example.json .\dist\win-x64\config.json
 notepad .\dist\win-x64\config.json
 ```
 
-Minimalbeispiel zum Kopieren:
+See [Configuration](#configuration) for all options.
+
+### 3. Test the connection
+
+The dry run reads hardware and NetBox but deliberately writes nothing:
+
+```powershell
+.\dist\win-x64\agent.exe `
+  --config .\dist\win-x64\config.json `
+  --dry-run
+```
+
+Expected output (the agent's messages are in German):
+
+```text
+Erfasst: CLIENT01, LENOVO 21MW, S/N ABC123
+Dry-Run erfolgreich; keine Änderungen geschrieben.
+```
+
+### 4. First real synchronisation
+
+```powershell
+.\dist\win-x64\agent.exe `
+  --config .\dist\win-x64\config.json
+```
+
+Expected output:
+
+```text
+Synchronisiert: Device #123, Asset #456
+```
+
+### 5. Install permanently
+
+Open PowerShell **as administrator**:
+
+```powershell
+Set-Location C:\path\to\Netbox-Client-Agent-for-Windows
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\install.ps1 `
+  -SourceDirectory .\dist\win-x64
+```
+
+The script:
+
+- copies the executable and configuration to `C:\Program Files\NetBox Windows Agent`,
+- restricts access to the API token to SYSTEM and local administrators,
+- creates the daily scheduled task `NetBox Windows Agent`,
+- starts the first synchronisation immediately.
+
+## Uninstall
+
+As administrator:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\uninstall.ps1
+```
+
+## Configuration
+
+Minimal example:
 
 ```json
 {
-  "netbox_url": "https://netbox.example.local",
-  "api_token": "HIER_DEN_NETBOX_TOKEN_EINTRAGEN",
+  "netbox_url": "https://netbox.example.com",
+  "api_token": "YOUR_NETBOX_TOKEN",
   "region": "emea",
   "site": "berlin",
   "location": "office-1",
@@ -79,19 +155,24 @@ Minimalbeispiel zum Kopieren:
 }
 ```
 
-`site` muss den Slug einer vorhandenen NetBox Site enthalten, da NetBox für jedes DCIM Device eine Site verlangt. `location` ist optional und darf entfernt oder auf `null` gesetzt werden. `region` grenzt die Suche nach der Site ein.
+`site` must be the slug of an existing NetBox site, since NetBox requires a site
+for every device. `location` is optional and may be removed or set to `null`.
+`region` narrows the site lookup.
 
-### Selbstsigniertes Zertifikat
+### Self-signed certificate
 
-Wenn NetBox ein selbstsigniertes Zertifikat verwendet und Windows der ausstellenden CA nicht vertraut:
+If NetBox uses a self-signed certificate and Windows does not trust the issuing
+CA:
 
 ```json
 "allow_insecure_tls": true
 ```
 
-Dies ignoriert Zertifikatsketten- und Namensfehler. In produktiven Umgebungen ist es sicherer, die interne CA auf dem Client zu installieren und `allow_insecure_tls` auf `false` zu lassen.
+This ignores certificate chain and name errors. In production it is safer to
+install the internal CA on the client and keep `allow_insecure_tls` set to
+`false`.
 
-### Optionale Funktionen abschalten
+### Disabling optional features
 
 ```json
 "collect_software": false,
@@ -99,9 +180,14 @@ Dies ignoriert Zertifikatsketten- und Namensfehler. In produktiven Umgebungen is
 "create_interfaces": false
 ```
 
-`max_software_entries` darf zwischen 0 und 1000 liegen. Erfasst wird maschinenweit installierte klassische Windows-Software aus der 32- und 64-Bit-Registry. Benutzerspezifische Store-/AppX-Pakete sind beim Lauf als SYSTEM nicht zuverlässig verfügbar.
+`max_software_entries` may be between 0 and 1000. The agent collects
+machine-wide classic Windows software from the 32- and 64-bit registry.
+Per-user Store/AppX packages are not reliably available when running as SYSTEM.
 
-Custom Fields werden standardmäßig nicht benötigt. Sollen sie verwendet werden, müssen sie vorher für `DCIM > Device` in NetBox existieren. Unterstützte Zuordnungen sind:
+### Custom fields
+
+Custom fields are not required by default. To use them, create them for
+`DCIM > Device` in NetBox first. Supported mappings:
 
 ```json
 "custom_fields": {
@@ -112,65 +198,11 @@ Custom Fields werden standardmäßig nicht benötigt. Sollen sie verwendet werde
 }
 ```
 
-## 4. Verbindung testen
+## Usage
 
-Der Dry-Run liest Hardware und NetBox, schreibt aber absichtlich nichts:
+### Distribution with Intune
 
-```powershell
-.\dist\win-x64\agent.exe `
-  --config .\dist\win-x64\config.json `
-  --dry-run
-```
-
-Erwartete Ausgabe:
-
-```text
-Erfasst: CLIENT01, LENOVO 21MW, S/N ABC123
-Dry-Run erfolgreich; keine Änderungen geschrieben.
-```
-
-## 5. Erste echte Synchronisation
-
-```powershell
-.\dist\win-x64\agent.exe `
-  --config .\dist\win-x64\config.json
-```
-
-Erwartete Ausgabe:
-
-```text
-Synchronisiert: Device #123, Asset #456
-```
-
-## 6. Dauerhaft installieren
-
-PowerShell **als Administrator** öffnen:
-
-```powershell
-Set-Location C:\Pfad\zum\Netbox-Client-Agent-for-Windows
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File .\scripts\install.ps1 `
-  -SourceDirectory .\dist\win-x64
-```
-
-Das Skript:
-
-- kopiert EXE und Konfiguration nach `C:\Program Files\NetBox Windows Agent`,
-- erlaubt nur SYSTEM und lokalen Administratoren den Zugriff auf den API-Token,
-- erstellt die tägliche geplante Aufgabe `NetBox Windows Agent`,
-- startet sofort die erste Synchronisation.
-
-Deinstallation, ebenfalls als Administrator:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File .\scripts\uninstall.ps1
-```
-
-## Intune-Verteilung
-
-Diese vier Dateien gemeinsam als Win32-App (`.intunewin`) paketieren:
+Package these four files together as a Win32 app (`.intunewin`):
 
 ```text
 agent.exe
@@ -179,78 +211,70 @@ install.ps1
 uninstall.ps1
 ```
 
-Copy-&-Paste-Werte für Intune:
+Intune settings:
 
 ```text
-Installationsbefehl:
+Install command:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourceDirectory .
 
-Deinstallationsbefehl:
+Uninstall command:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 
-Installationsverhalten:
+Install behavior:
 System
 
-Erkennungsregel (Regeltyp „Datei“):
-Pfad: C:\Program Files\NetBox Windows Agent
-Datei oder Ordner: agent.exe
-Erkennungsmethode: Datei oder Ordner ist vorhanden
-Auf 64-Bit-Clients einer 32-Bit-App zugeordnet: Nein
+Detection rule (rule type "File"):
+Path: C:\Program Files\NetBox Windows Agent
+File or folder: agent.exe
+Detection method: File or folder exists
+Associated with a 32-bit app on 64-bit clients: No
 ```
 
-## Fehlerbehebung
+### Troubleshooting
 
-### `agent.exe fehlt im Quellverzeichnis`
-
-Als `SourceDirectory` muss der Ordner angegeben werden, in dem sowohl `agent.exe` als auch `config.json` liegen:
+**`agent.exe fehlt im Quellverzeichnis`** (agent.exe missing in source
+directory) — `SourceDirectory` must be the folder that contains both
+`agent.exe` and `config.json`:
 
 ```powershell
 -SourceDirectory .\dist\win-x64
 ```
 
-### `RemoteCertificateNameMismatch` oder `RemoteCertificateChainErrors`
+**`RemoteCertificateNameMismatch` or `RemoteCertificateChainErrors`** — set
+`allow_insecure_tls` to `true` for testing. Permanently, install the correct
+internal CA and use a certificate name that matches the URL.
 
-Zum Testen `allow_insecure_tls` auf `true` setzen. Dauerhaft besser die korrekte interne CA installieren und einen zur URL passenden Zertifikatsnamen verwenden.
-
-### Custom Field ist nicht vorhanden
-
-Wenn keine eigenen NetBox Custom Fields angelegt wurden:
+**Custom field does not exist** — if no custom fields were created in NetBox:
 
 ```json
 "custom_fields": {}
 ```
 
-### `403 Forbidden`
+**`403 Forbidden`** — the API token's user lacks permissions for the object
+type named in the error.
 
-Dem Benutzer des API-Tokens fehlen Rechte für den im Fehler genannten Objekttyp.
-
-### `site: Dieses Feld ist erforderlich`
-
-NetBox verlangt für jedes DCIM Device eine Site. In `config.json` den Slug einer vorhandenen Site eintragen:
+**`site: This field is required`** — NetBox requires a site for every device.
+Enter the slug of an existing site in `config.json`:
 
 ```json
 "site": "berlin",
 "location": null
 ```
 
-### Intune meldet Installation fehlgeschlagen, die Dateien sind aber vorhanden
+**Intune reports a failed installation although the files exist** — in a file
+detection rule, the `Path` field must contain only the folder. `agent.exe`
+belongs in the separate `File or folder` field.
 
-Bei einer Datei-Erkennungsregel darf im Feld `Pfad` nur der Ordner stehen. `agent.exe` gehört ausschließlich in das separate Feld `Datei oder Ordner`:
+**`400 Bad Request`** — the full response after `FEHLER:` (error) names the
+field NetBox rejected. Often the configured device role, site or location is
+missing.
 
-```text
-Pfad: C:\Program Files\NetBox Windows Agent
-Datei oder Ordner: agent.exe
-```
-
-### `400 Bad Request`
-
-Die vollständige Antwort hinter `FEHLER:` enthält das von NetBox beanstandete Feld. Häufig fehlen die konfigurierte Device Role, Site oder Location.
-
-## Entwicklung
+## Development
 
 ```powershell
 dotnet build
 .\scripts\build.ps1 -Runtime win-x64
 ```
 
-GitHub Actions baut automatisch x64- und ARM64-Artefakte. `config.json`, `dist`, `bin`, `obj` und lokale Build-Werkzeuge werden nicht committed.
+GitHub Actions builds x64 and ARM64 artefacts automatically. `config.json`,
+`dist`, `bin`, `obj` and local build tools are not committed.
