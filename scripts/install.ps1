@@ -26,6 +26,14 @@ $principal = New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAcc
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
 Register-ScheduledTask -TaskName 'NetBox Windows Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 & $agentPath --config $configPath
-if ($LASTEXITCODE -ne 0) { throw "Die erste NetBox-Synchronisation ist mit Exitcode $LASTEXITCODE fehlgeschlagen." }
-Write-Host 'NetBox Windows Agent wurde erfolgreich installiert und synchronisiert.'
+$syncExitCode = $LASTEXITCODE
+if ($syncExitCode -ne 0) {
+    Write-Warning "Der Agent wurde installiert, aber die erste NetBox-Synchronisation ist mit Exitcode $syncExitCode fehlgeschlagen. Die geplante Aufgabe versucht es erneut."
+} else {
+    Write-Host 'Die erste NetBox-Synchronisation war erfolgreich.'
+}
+if (-not (Test-Path -LiteralPath $agentPath)) { throw 'Installation fehlgeschlagen: agent.exe wurde nicht installiert.' }
+if (-not (Test-Path -LiteralPath $configPath)) { throw 'Installation fehlgeschlagen: config.json wurde nicht installiert.' }
+if (-not (Get-ScheduledTask -TaskName 'NetBox Windows Agent' -ErrorAction SilentlyContinue)) { throw 'Installation fehlgeschlagen: Die geplante Aufgabe fehlt.' }
+Write-Host 'NetBox Windows Agent wurde erfolgreich installiert.'
 exit 0
