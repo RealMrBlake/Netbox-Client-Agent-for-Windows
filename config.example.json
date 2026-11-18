@@ -1,4 +1,5 @@
 {
+  "mode": "netbox",
   "netbox_url": "https://netbox.example.com",
   "api_token": "CHANGE_ME",
   "region": "emea",

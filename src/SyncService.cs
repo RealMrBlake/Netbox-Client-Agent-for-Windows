@@ -9,7 +9,7 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
         var manufacturer = await EnsureManufacturer(hw.Manufacturer, dryRun);
         var deviceType = await EnsureDeviceType(manufacturer, hw.Model, dryRun);
         var role = await client.FindOne("dcim/device-roles", ("slug", config.DeviceRole))
-            ?? throw new InvalidOperationException($"Geräterolle '{config.DeviceRole}' fehlt in NetBox.");
+            ?? throw new InvalidOperationException($"Device role '{config.DeviceRole}' does not exist in NetBox.");
 
         var device = await client.FindOne("dcim/devices", ("serial", hw.Serial));
         var customFields = BuildCustomFields(hw);
@@ -33,7 +33,7 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
         var assetPayload = new Dictionary<string, object?> {
             ["name"] = hw.Hostname, ["serial"] = hw.Serial, ["status"] = "used",
             ["device_type"] = deviceType.Id, ["device"] = device.Id,
-            ["description"] = $"Windows-Client; UUID {hw.Uuid}", ["comments"] = inventoryReport
+            ["description"] = $"Windows client; UUID {hw.Uuid}", ["comments"] = inventoryReport
         };
         if (asset is null) {
             if (dryRun) return (device.Id, 0);
@@ -90,13 +90,13 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
         var filters = new List<(string, string?)> { ("slug", config.Site) };
         if (!string.IsNullOrWhiteSpace(config.Region)) filters.Add(("region", config.Region));
         return await client.FindOne("dcim/sites", filters.ToArray())
-            ?? throw new InvalidOperationException($"Standort '{config.Site}' (Region '{config.Region}') fehlt in NetBox.");
+            ?? throw new InvalidOperationException($"Site '{config.Site}' (region '{config.Region}') does not exist in NetBox.");
     }
     private async Task<NetBoxObject?> ResolveLocation(NetBoxObject? site)
     {
         if (string.IsNullOrWhiteSpace(config.Location)) return null;
         return await client.FindOne("dcim/locations", ("slug", config.Location), ("site_id", site?.Id.ToString()))
-            ?? throw new InvalidOperationException($"Lokation '{config.Location}' fehlt in NetBox.");
+            ?? throw new InvalidOperationException($"Location '{config.Location}' does not exist in NetBox.");
     }
     private async Task<NetBoxObject> EnsureManufacturer(string name, bool dryRun)
     {
@@ -117,7 +117,7 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
     private Dictionary<string, object> BuildCustomFields(HardwareInfo hw)
     {
         var available = new Dictionary<string, object> {
-            ["agent_version"] = "0.1.0", ["windows_version"] = hw.WindowsVersion,
+            ["agent_version"] = AgentInfo.Version, ["windows_version"] = hw.WindowsVersion,
             ["device_uuid"] = hw.Uuid, ["last_sync"] = DateTimeOffset.UtcNow.ToString("O")
         };
         return config.CustomFields.Where(x => available.ContainsKey(x.Key)).ToDictionary(x => x.Value, x => available[x.Key]);
@@ -125,17 +125,17 @@ internal sealed class SyncService(NetBoxClient client, AgentConfig config)
     private static string HardwareSummary(HardwareInfo hw)
     {
         var lines = new List<string> {
-            "Automatisch durch NetBox Windows Agent aktualisiert.", "", "## Hardware",
-            $"- System: {hw.Manufacturer} {hw.Model}", $"- Seriennummer: {hw.Serial}", $"- UUID: {hw.Uuid}",
-            $"- Betriebssystem: {hw.WindowsCaption} {hw.WindowsVersion} ({hw.Architecture})",
-            $"- CPU: {hw.Processor}", $"- RAM: {hw.MemoryBytes / 1073741824d:F1} GiB", "", "### Datenträger"
+            "Updated automatically by the NetBox Windows Agent.", "", "## Hardware",
+            $"- System: {hw.Manufacturer} {hw.Model}", $"- Serial number: {hw.Serial}", $"- UUID: {hw.Uuid}",
+            $"- Operating system: {hw.WindowsCaption} {hw.WindowsVersion} ({hw.Architecture})",
+            $"- CPU: {hw.Processor}", $"- RAM: {hw.MemoryBytes / 1073741824d:F1} GiB", "", "### Disks"
         };
         lines.AddRange(hw.Disks.Select(d => $"- {d.Model} — {d.SizeBytes / 1000000000d:F0} GB — S/N {d.Serial} — {d.DeviceId}"));
-        lines.AddRange(["", "### Netzwerk"]);
+        lines.AddRange(["", "### Network"]);
         lines.AddRange(hw.Networks.Select(n => $"- {n.Name} — {n.MacAddress} — {string.Join(", ", n.IpAddresses)}"));
         if (hw.Software.Count > 0)
         {
-            lines.AddRange(["", $"## Installierte Software ({hw.Software.Count})"]);
+            lines.AddRange(["", $"## Installed software ({hw.Software.Count})"]);
             lines.AddRange(hw.Software.Select(s => $"- {s.Name}{(string.IsNullOrWhiteSpace(s.Version) ? "" : $" {s.Version}")}{(string.IsNullOrWhiteSpace(s.Publisher) ? "" : $" — {s.Publisher}")}"));
         }
         return string.Join('\n', lines);

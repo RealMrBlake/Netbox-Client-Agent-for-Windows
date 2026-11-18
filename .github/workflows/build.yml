@@ -23,6 +23,8 @@ jobs:
           path: |
             dist/${{ matrix.runtime }}/agent.exe
             config.example.json
+            config.listen.example.json
             scripts/install.ps1
             scripts/uninstall.ps1
+            scripts/gpo-startup.ps1
 

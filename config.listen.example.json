@@ -1,0 +1,9 @@
+{
+  "mode": "listen",
+  "listen_port": 8731,
+  "scan_key": "CHANGE_ME_TO_THE_KEY_FROM_THE_NETBOX_SYNCHRONIZER",
+  "allowed_networks": ["10.0.0.0/24"],
+  "inventory_cache_seconds": 300,
+  "collect_software": true,
+  "max_software_entries": 250
+}

@@ -17,7 +17,7 @@ internal sealed class NetBoxClient : IDisposable
         _http = new HttpClient(handler) { BaseAddress = new Uri(config.NetBoxUrl.TrimEnd('/') + "/"), Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds) };
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", config.ApiToken);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NetBox-Windows-Agent/0.1.0");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"NetBox-Windows-Agent/{AgentInfo.Version}");
     }
 
     public async Task<NetBoxObject?> FindOne(string endpoint, params (string Key, string? Value)[] filters)
@@ -25,7 +25,7 @@ internal sealed class NetBoxClient : IDisposable
         var query = string.Join('&', filters.Where(f => !string.IsNullOrWhiteSpace(f.Value))
             .Select(f => $"{Uri.EscapeDataString(f.Key)}={Uri.EscapeDataString(f.Value!)}"));
         var page = await Send<Page<NetBoxObject>>(HttpMethod.Get, $"api/{endpoint}/?limit=2&{query}");
-        if (page.Count > 1) throw new InvalidOperationException($"NetBox-Abfrage für {endpoint} ist nicht eindeutig.");
+        if (page.Count > 1) throw new InvalidOperationException($"NetBox query for {endpoint} is ambiguous.");
         return page.Results.SingleOrDefault();
     }
 
@@ -42,7 +42,7 @@ internal sealed class NetBoxClient : IDisposable
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"NetBox {method} {uri}: {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
-        return JsonSerializer.Deserialize<T>(body, _json) ?? throw new InvalidOperationException("NetBox lieferte eine leere Antwort.");
+        return JsonSerializer.Deserialize<T>(body, _json) ?? throw new InvalidOperationException("NetBox returned an empty response.");
     }
     public void Dispose() => _http.Dispose();
 }
