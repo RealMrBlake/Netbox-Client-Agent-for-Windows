@@ -9,5 +9,5 @@ dotnet publish (Join-Path $projectRoot 'NetBoxAgent.csproj') `
     -c $Configuration -r $Runtime --self-contained true `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:DebugType=None -p:DebugSymbols=false -o $output
-Write-Host "Erstellt: $output\agent.exe"
+Write-Host "Built: $output\agent.exe"
 
