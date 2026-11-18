@@ -340,7 +340,7 @@ Path: C:\Program Files\NetBox Windows Agent
 File or folder: agent.exe
 Detection method: String (version)
 Operator: Greater than or equal to
-Value: 0.2.0   (the version of agent.exe, see agent.exe --version)
+Value: 0.2.1   (the version of agent.exe, see agent.exe --version)
 Associated with a 32-bit app on 64-bit clients: No
 ```
 

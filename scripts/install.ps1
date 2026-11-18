@@ -22,10 +22,26 @@ $syncTask = 'NetBox Windows Agent'
 $listenerTask = 'NetBox Windows Agent Listener'
 $firewallRule = 'NetBoxWindowsAgent'
 
+$principalNow = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $principalNow.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw 'install.ps1 must run as administrator or SYSTEM (PowerShell: "Run as administrator"; Intune: install behavior "System").'
+}
+
 $sourceAgent = Join-Path $SourceDirectory 'agent.exe'
 $sourceConfig = Join-Path $SourceDirectory 'config.json'
-if (-not (Test-Path -LiteralPath $sourceAgent)) { throw 'agent.exe is missing in the source directory.' }
-if (-not (Test-Path -LiteralPath $sourceConfig)) { throw 'config.json is missing in the source directory.' }
+if (-not (Test-Path -LiteralPath $sourceAgent)) { throw "agent.exe is missing in the source directory $SourceDirectory." }
+if (-not (Test-Path -LiteralPath $sourceConfig)) { throw "config.json is missing in the source directory $SourceDirectory." }
+
+# Copies a file, retrying while it is briefly locked (e.g. an antivirus scan of the new agent.exe).
+function Copy-WithRetry([string]$Source, [string]$Destination) {
+    for ($attempt = 1; ; $attempt++) {
+        try { Copy-Item -LiteralPath $Source -Destination $Destination -Force; return }
+        catch [System.UnauthorizedAccessException], [System.IO.IOException] {
+            if ($attempt -ge 10) { throw "Cannot write $Destination ($($_.Exception.Message)). Is agent.exe still running or blocked by an antivirus?" }
+            Start-Sleep -Seconds 2
+        }
+    }
+}
 if ($Schedule -ne 'DAILY') { throw "Only the schedule 'DAILY' is supported." }
 
 $config = Get-Content -LiteralPath $sourceConfig -Raw | ConvertFrom-Json
@@ -44,8 +60,8 @@ Get-Process -Name agent -ErrorAction SilentlyContinue |
 Start-Sleep -Milliseconds 500
 
 New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
-Copy-Item -LiteralPath $sourceAgent -Destination (Join-Path $InstallDirectory 'agent.exe') -Force
-Copy-Item -LiteralPath $sourceConfig -Destination (Join-Path $InstallDirectory 'config.json') -Force
+Copy-WithRetry $sourceAgent (Join-Path $InstallDirectory 'agent.exe')
+Copy-WithRetry $sourceConfig (Join-Path $InstallDirectory 'config.json')
 $acl = Get-Acl $InstallDirectory
 $acl.SetAccessRuleProtection($true, $false)
 $administratorsSid = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
